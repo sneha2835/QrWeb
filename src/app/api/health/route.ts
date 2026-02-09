@@ -1,17 +1,15 @@
+// src/app/api/health/route.ts
 import { NextResponse } from "next/server";
-import { getEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/config/env.server";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const env = getEnv();
+  const env = getServerEnv(); // unified validation
 
-  return NextResponse.json(
-    {
-      status: "ok",
-      service: "citylink-cafe-api",
-      env: env.NODE_ENV,
-    },
-    { status: 200 }
-  );
+  return NextResponse.json({
+    status: "ok",
+    service: "citylink-cafe-api",
+    env: env.NODE_ENV,
+  });
 }
