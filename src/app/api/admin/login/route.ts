@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
-import { verifyAdminPassword, createAdminSession } from "@/lib/auth/admin";
-import { getEnv } from "@/lib/env";
+import { loginAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const env = getEnv();
-
   const body = await req.json();
   const { email, password } = body ?? {};
 
@@ -17,22 +14,21 @@ export async function POST(req: Request) {
     );
   }
 
-  if (email !== env.ADMIN_EMAIL) {
+  const result = await loginAdmin(email, password);
+
+  if (!result.ok) {
+    if (result.locked) {
+      return NextResponse.json(
+        { error: "Account temporarily locked" },
+        { status: 423 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Invalid credentials" },
       { status: 401 }
     );
   }
-
-  const valid = await verifyAdminPassword(password);
-  if (!valid) {
-    return NextResponse.json(
-      { error: "Invalid credentials" },
-      { status: 401 }
-    );
-  }
-
-  await createAdminSession();
 
   return NextResponse.json({ success: true });
 }

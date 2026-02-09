@@ -1,40 +1,61 @@
-import bcrypt from "bcrypt";
 import { cookies } from "next/headers";
-import { getEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/config/env.server";
+import {
+  getAdminByEmail,
+  recordFailedLogin,
+  recordSuccessfulLogin,
+} from "@/lib/db/admin";
+import { verifyPassword } from "@/lib/security/password";
 
 const SESSION_COOKIE = "citylink_admin_session";
 
-/**
- * TEMPORARY DEV HASH
- * Password: admin123
- */
-const DEV_ADMIN_HASH =
-  "$2b$12$rPEe4zpGuiSDOLEirz2Bfu4AwWws2PuhWiDqlno/Rw/v915LyauWy";
+export async function loginAdmin(email: string, password: string) {
+  const env = getServerEnv();
+  const admin = await getAdminByEmail(email);
 
-export async function verifyAdminPassword(plain: string) {
-  return bcrypt.compare(plain, DEV_ADMIN_HASH);
-}
+  if (!admin) return { ok: false };
 
-export async function createAdminSession() {
-  const env = getEnv();
-  const cookieStore = await cookies();
+  if (admin.locked_until && new Date(admin.locked_until) > new Date()) {
+    return { ok: false, locked: true };
+  }
+
+  const valid = await verifyPassword(password, admin.password_hash);
+
+  if (!valid) {
+    const attempts = (admin.failed_attempts ?? 0) + 1;
+
+    const lockUntil =
+      attempts >= env.ADMIN_MAX_LOGIN_ATTEMPTS
+        ? new Date(Date.now() + env.ADMIN_LOCKOUT_MINUTES * 60_000)
+        : undefined;
+
+    await recordFailedLogin(admin.id, attempts, lockUntil);
+    return { ok: false };
+  }
+
+  await recordSuccessfulLogin(admin.id);
+
+  const cookieStore = await cookies(); // ✅ REQUIRED
 
   cookieStore.set({
     name: SESSION_COOKIE,
-    value: "authenticated",
+    value: admin.id,
     httpOnly: true,
     secure: env.NODE_ENV === "production",
     sameSite: "strict",
     path: "/",
+    maxAge: env.ADMIN_SESSION_MAX_AGE_SECONDS,
   });
+
+  return { ok: true };
 }
 
-export async function destroyAdminSession() {
-  const cookieStore = await cookies();
+export async function logoutAdmin() {
+  const cookieStore = await cookies(); // ✅ REQUIRED
   cookieStore.delete(SESSION_COOKIE);
 }
 
 export async function isAdminAuthenticated() {
-  const cookieStore = await cookies();
-  return cookieStore.get(SESSION_COOKIE)?.value === "authenticated";
+  const cookieStore = await cookies(); // ✅ REQUIRED
+  return Boolean(cookieStore.get(SESSION_COOKIE));
 }

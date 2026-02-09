@@ -11,22 +11,23 @@ export default async function AdminPage() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-md p-4">
       <section className="rounded-xl bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Admin Dashboard</h1>
-
-          <form action="/api/admin/logout" method="POST">
-            <button
-              type="submit"
-              className="text-sm font-medium text-red-600 hover:text-red-700"
-            >
-              Logout
-            </button>
-          </form>
-        </div>
-
-        <p className="mt-4 text-sm text-slate-600">
+        <h1 className="text-xl font-semibold">Admin Dashboard</h1>
+        <p className="mt-2 text-sm text-slate-600">
           You are authenticated.
         </p>
+
+        <form
+          action="/api/admin/logout"
+          method="POST"
+          className="mt-6"
+        >
+          <button
+            type="submit"
+            className="w-full rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            Logout
+          </button>
+        </form>
       </section>
     </main>
   );
