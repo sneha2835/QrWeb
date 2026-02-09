@@ -4,9 +4,15 @@ import { getEnv } from "@/lib/env";
 
 const SESSION_COOKIE = "citylink_admin_session";
 
+/**
+ * TEMP DEV HASH
+ * Password: admin123
+ */
+const DEV_ADMIN_HASH =
+  "$2b$12$rPEe4zpGuiSDOLEirz2Bfu4AwWws2PuhWiDqlno/Rw/v915LyauWy";
+
 export async function verifyAdminPassword(plain: string) {
-  const env = getEnv();
-  return bcrypt.compare(plain, env.ADMIN_PASSWORD_HASH);
+  return bcrypt.compare(plain, DEV_ADMIN_HASH);
 }
 
 export async function createAdminSession() {
