@@ -9,11 +9,11 @@ const supabase = createClient(
 );
 
 export type Settings = {
-  service_start_time: string;
-  service_end_time: string;
+  id: number;
+  service_hours_start: string;
+  service_hours_end: string;
   orders_paused: boolean;
-  minimum_order_value: number;
-  geo_radius_meters: number;
+  min_order_amount: number;
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -32,15 +32,26 @@ export async function getSettings(): Promise<Settings> {
 export async function updateSettings(
   updates: Partial<Settings>
 ) {
+  // 🔑 Fetch the single row ID first (Supabase requires WHERE)
+  const { data, error: fetchError } = await supabase
+    .from("settings")
+    .select("id")
+    .single();
+
+  if (fetchError || !data) {
+    throw new Error("Settings row not found");
+  }
+
   const { error } = await supabase
     .from("settings")
     .update({
       ...updates,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", "global");
+    .eq("id", data.id); // ✅ explicit WHERE clause
 
   if (error) {
+    console.error(error);
     throw new Error("Failed to update settings");
   }
 }

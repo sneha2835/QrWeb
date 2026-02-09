@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/auth/admin";
+import { SettingsPanel } from "./SettingsPanel";
 
 export default async function AdminPage() {
   const authenticated = await isAdminAuthenticated();
@@ -15,6 +16,9 @@ export default async function AdminPage() {
         <p className="mt-2 text-sm text-slate-600">
           You are authenticated.
         </p>
+
+        {/* 👇 THIS IS WHERE IT BELONGS */}
+        <SettingsPanel />
 
         <form
           action="/api/admin/logout"
