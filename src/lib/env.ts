@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Minimal env validation for current phase.
- * DO NOT validate admin password here.
+ * DEV MODE env validation
+ * Password hash is NOT read from env
  */
 const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
@@ -22,7 +22,7 @@ export function getEnv() {
   if (!parsed.success) {
     console.error("❌ Invalid environment configuration:");
     console.error(parsed.error.flatten().fieldErrors);
-    throw new Error("Environment validation failed");
+    throw new Error("Invalid environment configuration");
   }
 
   cachedEnv = parsed.data;

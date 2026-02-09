@@ -31,7 +31,9 @@ export default function AdminLoginPage() {
       }
 
       // success → go to admin dashboard
-      router.replace("/admin");
+      setLoading(false);
+    router.replace("/admin");
+
     } catch {
       setError("Something went wrong. Try again.");
       setLoading(false);

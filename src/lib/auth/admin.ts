@@ -5,7 +5,7 @@ import { getEnv } from "@/lib/env";
 const SESSION_COOKIE = "citylink_admin_session";
 
 /**
- * TEMP DEV HASH
+ * TEMPORARY DEV HASH
  * Password: admin123
  */
 const DEV_ADMIN_HASH =
