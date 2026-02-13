@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 
+function generateIdempotencyKey() {
+  return crypto.randomUUID();
+}
+
 type MenuItem = {
   id: string;
   name: string;
@@ -12,8 +16,6 @@ type Props = {
   items: MenuItem[];
 };
 
-const MIN_ORDER = 199; // 🔧 change anytime or later fetch from admin settings
-
 export default function DamClient({ items }: Props) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [name, setName] = useState("");
@@ -21,164 +23,121 @@ export default function DamClient({ items }: Props) {
   const [point, setPoint] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+
+  const [idempotencyKey] = useState(generateIdempotencyKey);
 
   function increment(id: string) {
-    setCart(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+    setCart(p => ({ ...p, [id]: (p[id] ?? 0) + 1 }));
   }
 
   function decrement(id: string) {
-    setCart(prev => {
-      const qty = (prev[id] ?? 0) - 1;
-      if (qty <= 0) {
-        const copy = { ...prev };
-        delete copy[id];
-        return copy;
+    setCart(p => {
+      const q = (p[id] ?? 0) - 1;
+      if (q <= 0) {
+        const c = { ...p };
+        delete c[id];
+        return c;
       }
-      return { ...prev, [id]: qty };
+      return { ...p, [id]: q };
     });
   }
 
   const cartItems = items.filter(i => cart[i.id]);
-  const subtotal = cartItems.reduce(
-    (sum, i) => sum + i.price * cart[i.id],
-    0
-  );
+  const subtotal = cartItems.reduce((s, i) => s + i.price * cart[i.id], 0);
 
   async function placeOrder() {
-    if (!name || !phone || !point) {
-      setMessage("Please fill all details");
-      return;
-    }
-
-    if (subtotal < MIN_ORDER) {
-      setMessage(`Minimum order value is ₹${MIN_ORDER}`);
+    if (!name || !phone || !point || cartItems.length === 0) {
+      setMessage("Fill all details.");
       return;
     }
 
     setLoading(true);
     setMessage(null);
 
-    const payload = {
-      customer_name: name,
-      customer_phone: phone,
-      delivery_point: point,
-      items: cartItems.map(i => ({
-        id: i.id,
-        qty: cart[i.id],
-      })),
-    };
+    const res = await fetch("/api/order/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer_name: name,
+        customer_phone: phone,
+        delivery_point: point,
+        idempotency_key: idempotencyKey,
+        items: cartItems.map(i => ({
+          id: i.id,
+          qty: cart[i.id],
+        })),
+      }),
+    });
 
-    try {
-      const res = await fetch("/api/order/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    const data = await res.json();
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.error === "MIN_ORDER_NOT_MET") {
-          setMessage(`Minimum order is ₹${data.min_order_amount}`);
-        } else {
-          setMessage(data.error ?? "Order failed");
-        }
-        setLoading(false);
-        return;
-      }
-
-      setMessage(
-        `Order placed successfully!\nOrder ID: ${data.order_id}\nAmount: ₹${subtotal}`
-      );
-    } catch {
-      setMessage("Network error");
-    } finally {
+    if (!res.ok) {
+      setMessage(data.error ?? "Order failed");
       setLoading(false);
+      return;
     }
+
+    setOrderId(data.order_id);
+    setLoading(false);
+  }
+
+  async function handlePayment() {
+    if (!orderId) return;
+
+    setLoading(true);
+
+    const res = await fetch("/api/payment/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order_id: orderId }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setMessage(data.error ?? "Payment init failed");
+      setLoading(false);
+      return;
+    }
+
+    const razorpay = new (window as any).Razorpay({
+      key: data.key,
+      amount: data.amount,
+      currency: data.currency,
+      order_id: data.razorpay_order_id,
+      handler() {
+        setMessage("Payment successful. Awaiting confirmation.");
+        setCart({});
+      },
+    });
+
+    razorpay.open();
+    setLoading(false);
   }
 
   return (
-    <section className="mt-8 space-y-6">
-      <h2 className="text-lg font-semibold">Order</h2>
+    <div className="space-y-4">
+      <p className="font-semibold">Subtotal: ₹{subtotal}</p>
 
-      {/* MENU */}
-      <ul className="space-y-3">
-        {items.map(item => (
-          <li
-            key={item.id}
-            className="flex items-center justify-between rounded border p-3"
-          >
-            <div>
-              <p className="font-medium">{item.name}</p>
-              <p className="text-sm text-slate-600">₹{item.price}</p>
-            </div>
+      <button
+        disabled={loading || !!orderId}
+        onClick={placeOrder}
+        className="w-full bg-teal-700 text-white py-2 rounded"
+      >
+        {loading ? "Processing..." : "Place Order"}
+      </button>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => decrement(item.id)}
-                className="h-8 w-8 rounded bg-slate-200"
-              >
-                −
-              </button>
-              <span className="w-6 text-center">
-                {cart[item.id] ?? 0}
-              </span>
-              <button
-                onClick={() => increment(item.id)}
-                className="h-8 w-8 rounded bg-teal-600 text-white"
-              >
-                +
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* CART SUMMARY */}
-      <div className="rounded border p-4 space-y-3">
-        <p className="font-medium">Subtotal: ₹{subtotal}</p>
-
-        {subtotal > 0 && subtotal < MIN_ORDER && (
-          <p className="text-sm text-red-600">
-            Minimum order value is ₹{MIN_ORDER}
-          </p>
-        )}
-
-        <input
-          placeholder="Name"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
-
-        <input
-          placeholder="Phone"
-          value={phone}
-          onChange={e => setPhone(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
-
-        <input
-          placeholder="Delivery Point (e.g. Parking Area)"
-          value={point}
-          onChange={e => setPoint(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
-
-        {message && (
-          <p className="text-sm text-red-600 whitespace-pre-line">
-            {message}
-          </p>
-        )}
-
+      {orderId && (
         <button
-          onClick={placeOrder}
-          disabled={loading || subtotal < MIN_ORDER}
-          className="w-full rounded bg-teal-700 py-2 text-white disabled:opacity-50"
+          onClick={handlePayment}
+          className="w-full bg-green-600 text-white py-2 rounded"
         >
-          {loading ? "Placing Order…" : "Place Order"}
+          Pay Now
         </button>
-      </div>
-    </section>
+      )}
+
+      {message && <p className="text-sm text-slate-600">{message}</p>}
+    </div>
   );
 }

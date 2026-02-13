@@ -9,7 +9,7 @@ const supabase = createClient(
 );
 
 export type MenuItem = {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   price: number;

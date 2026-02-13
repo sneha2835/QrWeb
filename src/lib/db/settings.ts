@@ -16,14 +16,24 @@ export type Settings = {
   min_order_amount: number;
 };
 
+const SETTINGS_ID = 1;
+
 export async function getSettings(): Promise<Settings> {
   const { data, error } = await supabase
     .from("settings")
     .select("*")
-    .single();
+    .eq("id", SETTINGS_ID)
+    .maybeSingle();
 
-  if (error || !data) {
-    throw new Error("System settings not found");
+  if (error) {
+    console.error("SETTINGS_FETCH_FAILED:", error);
+    throw new Error("SYSTEM_SETTINGS_FETCH_FAILED");
+  }
+
+  if (!data) {
+    throw new Error(
+      "SYSTEM_SETTINGS_MISSING: expected settings row with id = 1"
+    );
   }
 
   return data;
@@ -32,26 +42,16 @@ export async function getSettings(): Promise<Settings> {
 export async function updateSettings(
   updates: Partial<Settings>
 ) {
-  // 🔑 Fetch the single row ID first (Supabase requires WHERE)
-  const { data, error: fetchError } = await supabase
-    .from("settings")
-    .select("id")
-    .single();
-
-  if (fetchError || !data) {
-    throw new Error("Settings row not found");
-  }
-
   const { error } = await supabase
     .from("settings")
     .update({
       ...updates,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", data.id); // ✅ explicit WHERE clause
+    .eq("id", SETTINGS_ID);
 
   if (error) {
-    console.error(error);
-    throw new Error("Failed to update settings");
+    console.error("SETTINGS_UPDATE_FAILED:", error);
+    throw new Error("SETTINGS_UPDATE_FAILED");
   }
 }

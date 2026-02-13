@@ -6,6 +6,7 @@ import {
   recordSuccessfulLogin,
 } from "@/lib/db/admin";
 import { verifyPassword } from "@/lib/security/password";
+import { signSession, verifySession } from "@/lib/security/session";
 
 const SESSION_COOKIE = "citylink_admin_session";
 
@@ -38,14 +39,15 @@ export async function loginAdmin(email: string, password: string) {
   const cookieStore = await cookies(); // ✅ REQUIRED
 
   cookieStore.set({
-    name: SESSION_COOKIE,
-    value: admin.id,
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-    maxAge: env.ADMIN_SESSION_MAX_AGE_SECONDS,
-  });
+  name: SESSION_COOKIE,
+  value: signSession(admin.id, env.ADMIN_SESSION_SECRET),
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "strict",
+  path: "/",
+  maxAge: env.ADMIN_SESSION_MAX_AGE_SECONDS,
+});
+
 
   return { ok: true };
 }
@@ -56,6 +58,13 @@ export async function logoutAdmin() {
 }
 
 export async function isAdminAuthenticated() {
-  const cookieStore = await cookies(); // ✅ REQUIRED
-  return Boolean(cookieStore.get(SESSION_COOKIE));
+  const env = getServerEnv();
+  const cookieStore = await cookies(); // ✅ await
+  const cookie = cookieStore.get(SESSION_COOKIE);
+
+  if (!cookie) return false;
+
+  const adminId = verifySession(cookie.value, env.ADMIN_SESSION_SECRET);
+  return Boolean(adminId);
 }
+
