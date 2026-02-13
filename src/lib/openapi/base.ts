@@ -1,6 +1,4 @@
-import { OpenAPIV3 } from "openapi-types";
-
-export const baseDocument: OpenAPIV3.Document = {
+export const baseDocument = {
   openapi: "3.0.0",
   info: {
     title: "CityLink Cafe API",
@@ -9,11 +7,13 @@ export const baseDocument: OpenAPIV3.Document = {
   },
   servers: [
     {
-      url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      url:
+        process.env.NEXT_PUBLIC_APP_URL ??
+        "http://localhost:3000",
     },
   ],
   paths: {},
   components: {
     schemas: {},
   },
-};
+} as const;
