@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       .from("cafe_orders")
 
       .select(
-        "id, total_amount, razorpay_order_id, payment_status, status"
+        "id, total_amount, razorpay_order_id, payment_status, status, expires_at"
       )
       .eq("id", order_id)
       .single();
@@ -86,6 +86,19 @@ export async function POST(req: Request) {
     if (order.status !== "PAYMENT_PENDING") {
       return NextResponse.json(
         { error: "INVALID_ORDER_STATE" },
+        { status: 400 }
+      );
+    }
+
+    if (new Date(order.expires_at) < new Date()) {
+      await supabase
+        .from("cafe_orders")
+        .update({ status: "EXPIRED" })
+        .eq("id", order.id)
+        .eq("payment_status", "PENDING");
+
+      return NextResponse.json(
+        { error: "ORDER_EXPIRED" },
         { status: 400 }
       );
     }

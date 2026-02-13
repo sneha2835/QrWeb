@@ -20,6 +20,10 @@ function verifySignature(rawBody: string, signature: string) {
     .update(rawBody)
     .digest("hex");
 
+  if (expected.length !== signature.length) {
+    return false;
+  }
+
   return crypto.timingSafeEqual(
     Buffer.from(expected),
     Buffer.from(signature)
@@ -38,11 +42,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_SIGNATURE" }, { status: 400 });
   }
 
-  const event = JSON.parse(rawBody);
+  type RazorpayWebhook = {
+    event: string;
+    payload?: {
+      payment?: {
+        entity?: {
+          id: string;
+          order_id: string;
+          amount: number;
+        };
+      };
+    };
+  };
 
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
+  }
+
+  const event = parsed as RazorpayWebhook;
   const eventType = event.event;
 
-  // Log webhook first (always)
+  if (!eventType) {
+    return NextResponse.json({ error: "INVALID_EVENT_TYPE" }, { status: 400 });
+  }
+
+  // Always log webhook
   await supabase.from("payment_webhook_logs").insert({
     event_type: eventType,
     razorpay_payment_id:
@@ -50,11 +78,19 @@ export async function POST(req: Request) {
     payload: event,
   });
 
+  // Only handle payment.captured
   if (eventType !== "payment.captured") {
     return NextResponse.json({ received: true });
   }
 
-  const payment = event.payload.payment.entity;
+  const payment = event.payload?.payment?.entity;
+
+  if (!payment?.id || !payment?.order_id || !payment?.amount) {
+    return NextResponse.json(
+      { error: "INVALID_EVENT_PAYLOAD" },
+      { status: 400 }
+    );
+  }
 
   const razorpayPaymentId = payment.id;
   const razorpayOrderId = payment.order_id;
@@ -68,7 +104,10 @@ export async function POST(req: Request) {
     .single();
 
   if (error || !order) {
-    return NextResponse.json({ error: "ORDER_NOT_FOUND" }, { status: 404 });
+    return NextResponse.json(
+      { error: "ORDER_NOT_FOUND" },
+      { status: 404 }
+    );
   }
 
   // Idempotency guard
@@ -76,9 +115,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
-  // Late payment check
+  // Late payment handling
   if (new Date(order.expires_at) < new Date()) {
-    // TODO: trigger refund
+    await supabase
+      .from("cafe_orders")
+      .update({ status: "EXPIRED" })
+      .eq("id", order.id)
+      .eq("payment_status", "PENDING");
+
     await supabase.from("order_events").insert({
       order_id: order.id,
       event_type: "LATE_PAYMENT_RECEIVED",
@@ -107,7 +151,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Log event
   await supabase.from("order_events").insert({
     order_id: order.id,
     event_type: "PAYMENT_CAPTURED",
@@ -119,3 +162,4 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ received: true });
 }
+

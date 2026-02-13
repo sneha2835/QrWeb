@@ -18,8 +18,12 @@ export function OrderStatusControl({
   onUpdated,
 }: Props) {
   const [loading, setLoading] = useState(false);
-
-  async function update(payload: Record<string, any>) {
+ 
+  type UpdatePayload = {
+  status?: string;
+  payment_status?: string;
+};
+  async function update(payload: UpdatePayload) {
     setLoading(true);
     try {
       await fetch(`/api/admin/orders/${orderId}/status`, {

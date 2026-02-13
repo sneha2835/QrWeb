@@ -101,7 +101,7 @@ export default function DamClient({ items }: Props) {
       return;
     }
 
-    const razorpay = new (window as any).Razorpay({
+    const razorpay = new window.Razorpay({
       key: data.key,
       amount: data.amount,
       currency: data.currency,

@@ -17,7 +17,8 @@ const supabase = createClient(
 const transitions: Record<string, string[]> = {
   PAYMENT_PENDING: ["CONFIRMED"],
   CONFIRMED: ["PREPARING"],
-  PREPARING: ["OUT_FOR_DELIVERY"],
+  PREPARING: ["READY"],
+  READY: ["OUT_FOR_DELIVERY"],
   OUT_FOR_DELIVERY: ["DELIVERED"],
 };
 
@@ -27,6 +28,7 @@ const schema = z.object({
       "PAYMENT_PENDING",
       "CONFIRMED",
       "PREPARING",
+      "READY",
       "OUT_FOR_DELIVERY",
       "DELIVERED",
     ])
@@ -72,9 +74,19 @@ export async function PATCH(
     );
   }
 
-  const update: Record<string, any> = {
-    updated_at: new Date().toISOString(),
-  };
+  type OrderUpdate = {
+  updated_at: string;
+  status?: string;
+  payment_status?: string;
+  ready_at?: string;
+  delivery_status?: string;
+};
+
+
+const update: OrderUpdate = {
+  updated_at: new Date().toISOString(),
+};
+
 
   // 🔁 Status transition validation
   if (body.status) {
@@ -92,6 +104,11 @@ export async function PATCH(
     }
 
     update.status = body.status;
+
+    if (body.status === "READY") {
+      update.ready_at = new Date().toISOString();
+      update.delivery_status = "UNASSIGNED";
+    }
   }
 
 // 💰 Cash payment support (SAFE)

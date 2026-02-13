@@ -138,7 +138,7 @@ if (subtotal < settings.min_order_amount) {
       amount: subtotal,
       status: "PAYMENT_PENDING",
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: "ORDER_CREATION_FAILED" }, { status: 500 });
   }
 }

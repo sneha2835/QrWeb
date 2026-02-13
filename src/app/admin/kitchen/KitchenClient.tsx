@@ -36,10 +36,19 @@ export function KitchenClient() {
   }
 
   useEffect(() => {
+  async function init() {
+    await load();
+  }
+
+  init();
+
+  const id = setInterval(() => {
     load();
-    const id = setInterval(load, 10000);
-    return () => clearInterval(id);
-  }, []);
+  }, 10000);
+
+  return () => clearInterval(id);
+}, []);
+
 
   return (
     <div className="space-y-6">
