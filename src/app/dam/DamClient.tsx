@@ -43,8 +43,12 @@ export default function DamClient({ items }: Props) {
     });
   }
 
+  const subtotal = items.reduce(
+    (sum, item) => sum + (cart[item.id] ?? 0) * item.price,
+    0
+  );
+
   const cartItems = items.filter(i => cart[i.id]);
-  const subtotal = cartItems.reduce((s, i) => s + i.price * cart[i.id], 0);
 
   async function placeOrder() {
     if (!name || !phone || !point || cartItems.length === 0) {
@@ -117,13 +121,72 @@ export default function DamClient({ items }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+
+      {/* 🔥 MENU LIST */}
+      <div className="space-y-3">
+        {items.map(item => (
+          <div
+            key={item.id}
+            className="flex justify-between items-center border rounded p-3"
+          >
+            <div>
+              <p className="font-medium">{item.name}</p>
+              <p className="text-sm text-slate-600">₹{item.price}</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => decrement(item.id)}
+                className="px-2 py-1 bg-gray-200 rounded"
+              >
+                -
+              </button>
+
+              <span>{cart[item.id] ?? 0}</span>
+
+              <button
+                onClick={() => increment(item.id)}
+                className="px-2 py-1 bg-gray-200 rounded"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 🔥 CUSTOMER DETAILS */}
+      <div className="space-y-3">
+        <input
+          placeholder="Your Name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          className="w-full border rounded px-3 py-2"
+        />
+
+        <input
+          placeholder="Phone Number"
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          className="w-full border rounded px-3 py-2"
+        />
+
+        <input
+          placeholder="Delivery Point"
+          value={point}
+          onChange={e => setPoint(e.target.value)}
+          className="w-full border rounded px-3 py-2"
+        />
+      </div>
+
+      {/* 🔥 CHECKOUT */}
       <p className="font-semibold">Subtotal: ₹{subtotal}</p>
 
       <button
         disabled={loading || !!orderId}
         onClick={placeOrder}
-        className="w-full bg-teal-700 text-white py-2 rounded"
+        className="w-full bg-teal-700 text-white py-2 rounded disabled:opacity-50"
       >
         {loading ? "Processing..." : "Place Order"}
       </button>

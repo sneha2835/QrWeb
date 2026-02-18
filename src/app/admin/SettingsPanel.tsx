@@ -15,10 +15,11 @@ export function SettingsPanel() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/settings")
+    fetch("/api/admin/settings", {
+      credentials: "same-origin",
+    })
       .then(res => res.json())
       .then(data => {
-        // 🔑 NORMALIZE ONCE — prevents uncontrolled input warning
         setSettings({
           id: data.id,
           service_hours_start: data.service_hours_start ?? "00:00",
@@ -39,6 +40,7 @@ export function SettingsPanel() {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify(settings),
       });
 
@@ -57,7 +59,6 @@ export function SettingsPanel() {
 
   return (
     <div className="mt-6 space-y-4">
-      {/* Orders paused */}
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -72,7 +73,6 @@ export function SettingsPanel() {
         Orders Paused
       </label>
 
-      {/* Service start time */}
       <div>
         <label className="block text-sm text-slate-600">
           Service Start Time
@@ -90,7 +90,6 @@ export function SettingsPanel() {
         />
       </div>
 
-      {/* Service end time */}
       <div>
         <label className="block text-sm text-slate-600">
           Service End Time
@@ -108,7 +107,6 @@ export function SettingsPanel() {
         />
       </div>
 
-      {/* Minimum order amount */}
       <div>
         <label className="block text-sm text-slate-600">
           Minimum Order Amount

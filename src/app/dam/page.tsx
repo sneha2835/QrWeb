@@ -1,31 +1,21 @@
+// src/app/dam/page.tsx
+
 import DamClient from "./DamClient";
+import { getDamMenu } from "@/lib/db/menu";
 
 type MenuItem = {
-  id: string; // UUID
+  id: string;
   name: string;
   description: string | null;
   price: number;
   category: string;
 };
 
-async function fetchMenu(): Promise<MenuItem[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/menu`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error("Service unavailable");
-  }
-
-  const data = await res.json();
-  return data.items;
-}
-
 export default async function DamPage() {
   let items: MenuItem[] = [];
 
   try {
-    items = await fetchMenu();
+    items = await getDamMenu();
   } catch {
     return (
       <main className="mx-auto min-h-screen w-full max-w-md p-4">
@@ -52,7 +42,6 @@ export default async function DamPage() {
         CityLink Cafe — Dam Menu
       </h1>
 
-      {/* Client-side cart + checkout */}
       <DamClient
         items={items.map(item => ({
           id: item.id,
