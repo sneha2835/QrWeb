@@ -8,8 +8,10 @@ export async function GET() {
   const env = getServerEnv(); // unified validation
 
   return NextResponse.json({
-    status: "ok",
-    service: "citylink-cafe-api",
-    env: env.NODE_ENV,
-  });
+  status: "ok",
+  service: "citylink-cafe-api",
+  env: env.NODE_ENV,
+  timezone: env.SERVICE_TIMEZONE,
+});
+
 }
