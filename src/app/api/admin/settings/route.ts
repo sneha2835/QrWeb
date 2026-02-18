@@ -6,8 +6,8 @@ import { getSettings, updateSettings } from "@/lib/db/settings";
 export const runtime = "nodejs";
 
 const settingsUpdateSchema = z.object({
-  service_hours_start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
-  service_hours_end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  service_hours_start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).optional(),
+  service_hours_end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).optional(),
   orders_paused: z.boolean().optional(),
   min_order_amount: z.number().min(0).optional(),
 });
