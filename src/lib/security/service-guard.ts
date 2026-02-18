@@ -26,13 +26,20 @@ export async function assertServiceIsOpen() {
     .map(Number);
 
   // 3️⃣ Get current time IN BUSINESS TIMEZONE
-  const now = new Date(
-    new Date().toLocaleString("en-US", {
-      timeZone: env.SERVICE_TIMEZONE,
-    })
-  );
+  
+  const now = new Date();
+const formatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: env.SERVICE_TIMEZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+const parts = formatter.formatToParts(now);
+const hour = Number(parts.find(p => p.type === "hour")?.value ?? 0);
+const minute = Number(parts.find(p => p.type === "minute")?.value ?? 0);
+
+  const nowMinutes = hour * 60 + minute;
   const startMinutes = startH * 60 + startM;
   const endMinutes = endH * 60 + endM;
 
